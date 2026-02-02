@@ -42,3 +42,5 @@ logs/
 # Temporary
 tmp/
 temp/
+
+/generated/prisma
