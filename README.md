@@ -5,6 +5,7 @@
 ## 📋 Description
 
 Application web full-stack permettant de gérer des événements (formations, ateliers, conférences) et leurs réservations avec :
+
 - Gestion des événements (création, modification, publication, annulation)
 - Système de réservation avec contrôle de capacité
 - Authentification JWT avec rôles (Admin/Participant)
@@ -14,9 +15,10 @@ Application web full-stack permettant de gérer des événements (formations, at
 ## 🛠️ Technologies
 
 ### Backend
+
 - **Framework**: NestJS (TypeScript)
-- **Base de données**: PostgreSQL / MongoDB
-- **ORM**: Prisma / TypeORM / Mongoose
+- **Base de données**: PostgreSQL
+- **ORM**: Prisma
 - **Authentification**: JWT + Passport
 - **Validation**: class-validator, class-transformer
 - **Documentation API**: Swagger/OpenAPI
@@ -24,14 +26,18 @@ Application web full-stack permettant de gérer des événements (formations, at
 - **Tests**: Jest
 
 ### Frontend
-- **Framework**: React / Next.js / Vue.js
-- **UI**: Tailwind CSS / Material-UI
-- **State Management**: Redux / Zustand
+
+- **Framework**: Next.js 14+ (App Router)
+- **Styling**: Tailwind CSS
+- **State Management**: Redux Toolkit
+- **Form Validation**: React Hook Form + Zod
+- **HTTP Client**: Axios with interceptors
 
 ### DevOps
+
 - **Containerisation**: Docker + Docker Compose
 - **CI/CD**: GitHub Actions
-- **Déploiement**: À définir
+- **Déploiement**: Docker Hub
 
 ## 📁 Structure du Projet
 
@@ -42,11 +48,16 @@ Application-de-reservation-d-evenements/
 │   │   ├── auth/           # Authentification & JWT
 │   │   ├── users/          # Gestion des utilisateurs
 │   │   ├── events/         # Gestion des événements
+│   │   │   ├── dto/        # DTOs pour la validation
+│   │   │   └── entities/   # Entités événements
 │   │   ├── reservations/   # Système de réservation
+│   │   │   ├── dto/        # DTOs pour la validation
+│   │   │   └── entities/   # Entités réservations
+│   │   ├── pdf/            # Service de génération PDF
 │   │   └── common/         # Utilitaires partagés
-│   ├── test/               # Tests E2E
+│   ├── test/               # Tests unitaires et E2E
 │   └── Dockerfile
-├── frontend/               # Application client (à définir)
+├── frontend/               # Application client Next.js
 ├── docs/                   # Documentation
 │   ├── SPCIFI~1.MD        # Spécification technique
 │   └── Planification JIRA...
@@ -56,9 +67,10 @@ Application-de-reservation-d-evenements/
 ## 🚀 Installation
 
 ### Prérequis
+
 - Node.js >= 18.x
 - npm ou yarn
-- PostgreSQL >= 14 ou MongoDB >= 5
+- PostgreSQL >= 14
 - Docker (optionnel)
 
 ### Backend Setup
@@ -73,8 +85,11 @@ npm install
 cp .env.example .env
 # Éditer .env avec vos configurations
 
-# Migrations de la base de données
-npm run migration:run
+# Générer les fichiers Prisma
+npx prisma generate
+
+# Appliquer les migrations de la base de données
+npx prisma migrate dev
 
 # Démarrage en mode développement
 npm run start:dev
@@ -111,6 +126,7 @@ docker-compose down
 ## 📚 Documentation API
 
 Une fois le backend lancé, la documentation Swagger est accessible à :
+
 - **URL**: http://localhost:3000/api/docs
 
 ## 🧪 Tests
@@ -123,6 +139,9 @@ cd backend
 # Tests unitaires
 npm run test
 
+# Tests unitaires en mode watch
+npm run test:watch
+
 # Tests E2E
 npm run test:e2e
 
@@ -133,12 +152,14 @@ npm run test:cov
 ## 👥 Rôles & Permissions
 
 ### 🔑 Admin
+
 - Créer, modifier, publier et annuler des événements
 - Consulter toutes les réservations
 - Confirmer ou refuser des réservations
 - Accéder aux statistiques et au dashboard
 
 ### 👤 Participant
+
 - Consulter les événements publiés
 - Créer des réservations
 - Annuler ses propres réservations
@@ -157,6 +178,7 @@ npm run test:cov
 ## 📊 Planification JIRA
 
 Le projet est organisé en **8 Epics** sur JIRA :
+
 1. Authentification
 2. Gestion des Utilisateurs
 3. Gestion des Événements (Admin)
@@ -178,17 +200,20 @@ Voir [Planification JIRA](./docs/Planification%20JIRA%20-%20Import%20CSV%20014f8
 ## 📝 Règles Métier
 
 ### Statuts des Événements
+
 - `DRAFT` - Événement en brouillon
 - `PUBLISHED` - Événement publié et visible
 - `CANCELED` - Événement annulé
 
 ### Statuts des Réservations
+
 - `PENDING` - En attente de confirmation
 - `CONFIRMED` - Confirmée par l'admin
 - `REFUSED` - Refusée par l'admin
 - `CANCELED` - Annulée par le participant ou l'admin
 
 ### Règles de Réservation
+
 - ❌ Pas de réservation sur événement non publié
 - ❌ Pas de réservation si capacité atteinte
 - ❌ Pas de doublon (1 réservation active max par user/event)
@@ -214,6 +239,18 @@ Ce projet est développé dans le cadre d'une formation académique.
 
 Pour toute question, ouvrir une issue sur le dépôt GitHub.
 
+## 🏗️ Avancement
+
+- ✅ Authentification (JWT + RBAC)
+- ✅ Gestion des événements (CRUD)
+- ✅ Système de réservations
+- ✅ Contrôle d'accès par rôles
+- ✅ Validation des données
+- ✅ Tests unitaires
+- 🔄 Frontend Next.js (en cours)
+- 🔄 Tests E2E (en cours)
+- 🔄 Docker & CI/CD (à faire)
+
 ---
 
-**Status**: 🚧 En développement - Phase Setup Initiale
+**Status**: ✅ Backend complet - Prêt pour le développement frontend
