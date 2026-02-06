@@ -3,8 +3,11 @@ import {
   NotFoundException,
   ForbiddenException,
   BadRequestException,
+  Logger,
 } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { MailService } from '../mail/mail.service';
 import { CreateEventDto } from './dto/create-event.dto';
 import { UpdateEventDto } from './dto/update-event.dto';
 import { FilterEventDto } from './dto/filter-event.dto';
@@ -14,7 +17,12 @@ import { UserRole } from '../common/enums/user-role.enum';
 
 @Injectable()
 export class EventsService {
-  constructor(private prisma: PrismaService) {}
+  private readonly logger = new Logger(EventsService.name);
+
+  constructor(
+    private prisma: PrismaService,
+    private mailService: MailService,
+  ) {}
 
   async create(createEventDto: CreateEventDto, userId: string) {
     const { title, description, date, location, capacity } = createEventDto;
@@ -48,7 +56,7 @@ export class EventsService {
     const isAdmin = userRole === UserRole.ADMIN;
 
     // Build where clause based on user role
-    const whereClause: any = {};
+    const whereClause: Prisma.EventWhereInput = {};
 
     if (!isAdmin) {
       // Non-admins only see published events
@@ -172,6 +180,44 @@ export class EventsService {
     return updatedEvent;
   }
 
+  async remove(id: string, userId: string, userRole: UserRole) {
+    if (userRole !== UserRole.ADMIN) {
+      throw new ForbiddenException('Only admins can delete events');
+    }
+
+    const event = await this.prisma.event.findUnique({
+      where: { id },
+      include: { reservations: true },
+    });
+
+    if (!event) {
+      throw new NotFoundException(`Event with ID ${id} not found`);
+    }
+
+    if (event.createdById !== userId) {
+      throw new ForbiddenException('You can only delete events you created');
+    }
+
+    // Only allow deletion of draft events or events with no active reservations
+    const activeReservations = event.reservations.filter(
+      (r) => r.status === ReservationStatus.PENDING || r.status === ReservationStatus.CONFIRMED,
+    );
+
+    if (activeReservations.length > 0) {
+      throw new BadRequestException(
+        'Cannot delete event with active reservations. Cancel the event instead.',
+      );
+    }
+
+    // Delete related reservations first, then the event
+    await this.prisma.$transaction(async (tx) => {
+      await tx.reservation.deleteMany({ where: { eventId: id } });
+      await tx.event.delete({ where: { id } });
+    });
+
+    return { message: `Event with ID ${id} deleted successfully` };
+  }
+
   async publish(id: string, userId: string, userRole: UserRole) {
     if (userRole !== UserRole.ADMIN) {
       throw new ForbiddenException('Only admins can publish events');
@@ -215,7 +261,16 @@ export class EventsService {
     const event = await this.prisma.event.findUnique({
       where: { id },
       include: {
-        reservations: true,
+        reservations: {
+          include: {
+            user: {
+              select: {
+                email: true,
+                firstName: true,
+              },
+            },
+          },
+        },
       },
     });
 
@@ -255,6 +310,21 @@ export class EventsService {
         },
       });
     });
+
+    // Send cancellation emails to all affected users (non-blocking)
+    const activeReservations = event.reservations.filter(
+      (r) => r.status === ReservationStatus.PENDING || r.status === ReservationStatus.CONFIRMED,
+    );
+    for (const reservation of activeReservations) {
+      this.mailService
+        .sendEventCanceled(
+          reservation.user.email,
+          reservation.user.firstName,
+          event.title,
+          event.date,
+        )
+        .catch((err) => this.logger.warn(`Failed to send event cancellation email: ${err.message}`));
+    }
 
     return canceledEvent;
   }
@@ -314,14 +384,16 @@ export class EventsService {
       },
     });
 
+    const statusDist: Record<string, number> = statusDistribution.reduce((acc, curr) => {
+      acc[curr.status] = curr._count.status;
+      return acc;
+    }, {} as Record<string, number>);
+
     return {
       upcomingEvents: upcomingEventsCount,
       totalReservations,
       avgFillRate: parseFloat(avgFillRate.toFixed(2)),
-      statusDistribution: statusDistribution.reduce((acc, curr) => {
-        acc[curr.status] = curr._count.status;
-        return acc;
-      }, {}),
+      statusDistribution: statusDist,
     };
   }
 

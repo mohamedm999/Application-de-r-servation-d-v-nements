@@ -22,6 +22,15 @@ export class UsersService {
         lastName,
         role,
       },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        role: true,
+        createdAt: true,
+        updatedAt: true,
+      },
     });
   }
 
@@ -69,12 +78,30 @@ export class UsersService {
           password: await this.hashPassword(updateUserDto.password),
         }),
       },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        role: true,
+        createdAt: true,
+        updatedAt: true,
+      },
     });
   }
 
   async remove(id: string) {
     return await this.prisma.user.delete({
       where: { id },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        role: true,
+        createdAt: true,
+        updatedAt: true,
+      },
     });
   }
 

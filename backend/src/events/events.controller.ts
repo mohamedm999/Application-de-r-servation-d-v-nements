@@ -8,13 +8,13 @@ import {
   Delete,
   Query,
   UseGuards,
-  HttpStatus,
 } from '@nestjs/common';
 import { EventsService } from './events.service';
 import { CreateEventDto } from './dto/create-event.dto';
 import { UpdateEventDto } from './dto/update-event.dto';
 import { FilterEventDto } from './dto/filter-event.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { UserRole } from '../common/enums/user-role.enum';
@@ -48,7 +48,20 @@ export class EventsController {
     return await this.eventsService.findAll(filters, userId, userRole);
   }
 
+  @Get('stats/dashboard')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get event statistics for admin dashboard' })
+  @ApiResponse({ status: 200, description: 'Statistics retrieved successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
+  async getEventStats(@CurrentUser() user: User) {
+    return await this.eventsService.getEventStats(user.id, user.role as UserRole);
+  }
+
   @Get(':id')
+  @UseGuards(OptionalJwtAuthGuard)
   @ApiOperation({ summary: 'Find a specific event by ID' })
   @ApiResponse({ status: 200, description: 'Event retrieved successfully' })
   @ApiResponse({ status: 404, description: 'Event not found' })
@@ -73,6 +86,19 @@ export class EventsController {
     @CurrentUser() user: User,
   ) {
     return await this.eventsService.update(id, updateEventDto, user.id, user.role as UserRole);
+  }
+
+  @Delete(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Delete an event' })
+  @ApiResponse({ status: 200, description: 'Event deleted successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
+  @ApiResponse({ status: 404, description: 'Event not found' })
+  async remove(@Param('id') id: string, @CurrentUser() user: User) {
+    return await this.eventsService.remove(id, user.id, user.role as UserRole);
   }
 
   @Patch(':id/publish')
@@ -112,17 +138,5 @@ export class EventsController {
   @ApiResponse({ status: 404, description: 'Event not found' })
   async getEventReservations(@Param('id') eventId: string, @CurrentUser() user: User) {
     return await this.eventsService.getEventReservations(eventId, user.id, user.role as UserRole);
-  }
-
-  @Get('stats/dashboard')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN)
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Get event statistics for admin dashboard' })
-  @ApiResponse({ status: 200, description: 'Statistics retrieved successfully' })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
-  @ApiResponse({ status: 403, description: 'Forbidden' })
-  async getEventStats(@CurrentUser() user: User) {
-    return await this.eventsService.getEventStats(user.id, user.role as UserRole);
   }
 }

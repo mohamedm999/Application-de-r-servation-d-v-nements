@@ -22,7 +22,7 @@ export class CreateEventDto {
   @IsNotEmpty()
   @MinLength(3)
   @MaxLength(200)
-  title: string;
+  title!: string;
 
   @ApiProperty({
     description: 'Description of the event',
@@ -31,14 +31,14 @@ export class CreateEventDto {
   @IsString()
   @IsNotEmpty()
   @MinLength(10)
-  description: string;
+  description!: string;
 
   @ApiProperty({
     description: 'Date and time of the event',
     example: '2023-12-25T10:00:00Z',
   })
   @IsDateString()
-  date: string;
+  date!: string;
 
   @ApiProperty({
     description: 'Location of the event',
@@ -46,7 +46,7 @@ export class CreateEventDto {
   })
   @IsString()
   @IsNotEmpty()
-  location: string;
+  location!: string;
 
   @ApiProperty({
     description: 'Maximum capacity of the event',
@@ -57,5 +57,5 @@ export class CreateEventDto {
   @IsNumber()
   @Min(1)
   @Max(10000)
-  capacity: number;
+  capacity!: number;
 }
