@@ -3,7 +3,6 @@ import {
   ConflictException,
   UnauthorizedException,
   InternalServerErrorException,
-  BadRequestException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
@@ -11,7 +10,6 @@ import { PrismaService } from '../prisma/prisma.service';
 import { RegisterDto, LoginDto } from './dto';
 import * as bcrypt from 'bcrypt';
 import { User, UserRole } from '@prisma/client';
-import { randomBytes } from 'crypto';
 
 @Injectable()
 export class AuthService {
@@ -21,7 +19,7 @@ export class AuthService {
     private configService: ConfigService,
   ) {}
 
-  private async generateTokens(user: Partial<User>) {
+  private async generateTokens(user: Partial<User>): Promise<{ accessToken: string; refreshToken: string }> {
     const accessTokenPayload = {
       sub: user.id as string,
       email: user.email as string,
@@ -37,15 +35,19 @@ export class AuthService {
     const accessToken = this.jwtService.sign(accessTokenPayload);
 
     // Generate refresh token using explicit options
+    const refreshSecret = this.configService.get<string>('JWT_REFRESH_SECRET') ?? 'your_refresh_secret';
+    const refreshExpiresIn = this.configService.get<string>('JWT_REFRESH_EXPIRES_IN') ?? '7d';
+    
+    // Use type assertion for JWT options - this is a known NestJS typing issue
     const refreshToken = this.jwtService.sign(refreshTokenPayload, {
-      secret: this.configService.get<string>('JWT_REFRESH_SECRET') || 'your_refresh_secret',
-      expiresIn: this.configService.get<string>('JWT_REFRESH_EXPIRES_IN') || '7d',
-    } as any);
+      secret: refreshSecret,
+      expiresIn: refreshExpiresIn,
+    } as Record<string, unknown>);
 
     return { accessToken, refreshToken };
   }
 
-  async register(registerDto: RegisterDto) {
+  async register(registerDto: RegisterDto): Promise<{ user: Omit<User, 'password'>; accessToken: string; refreshToken: string }> {
     const { email, password, firstName, lastName } = registerDto;
 
     // Check if user already exists
@@ -92,12 +94,12 @@ export class AuthService {
         accessToken,
         refreshToken,
       };
-    } catch (error) {
+    } catch {
       throw new InternalServerErrorException('Failed to create user');
     }
   }
 
-  async login(loginDto: LoginDto) {
+  async login(loginDto: LoginDto): Promise<{ user: Omit<User, 'password'>; accessToken: string; refreshToken: string }> {
     const { email, password } = loginDto;
 
     // Find user
@@ -117,7 +119,8 @@ export class AuthService {
     }
 
     // Remove password from response
-    const { password: _, ...userWithoutPassword } = user;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { password: _password, ...userWithoutPassword } = user;
 
     // Generate tokens
     const { accessToken, refreshToken } = await this.generateTokens(userWithoutPassword);
@@ -132,7 +135,7 @@ export class AuthService {
     };
   }
 
-  async getMe(userId: string) {
+  async getMe(userId: string): Promise<Omit<User, 'password'>> {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       select: {
@@ -153,7 +156,7 @@ export class AuthService {
     return user;
   }
 
-  async refreshTokens(refreshToken: string) {
+  async refreshTokens(refreshToken: string): Promise<{ accessToken: string; refreshToken: string }> {
     try {
       // Verify the refresh token
       const payload = await this.jwtService.verifyAsync(refreshToken, {
@@ -203,15 +206,15 @@ export class AuthService {
       await this.updateRefreshToken(storedRefreshToken.id, newRefreshToken);
 
       return {
-        accessToken: newRefreshToken,
+        accessToken,
         refreshToken: newRefreshToken,
       };
-    } catch (error) {
+    } catch {
       throw new UnauthorizedException('Invalid refresh token');
     }
   }
 
-  async logout(userId: string, refreshToken: string) {
+  async logout(userId: string, refreshToken: string): Promise<{ message: string }> {
     // Revoke the refresh token
     await this.prisma.refreshToken.updateMany({
       where: {
@@ -226,7 +229,7 @@ export class AuthService {
     return { message: 'Logged out successfully' };
   }
 
-  private async storeRefreshToken(userId: string, refreshToken: string) {
+  private async storeRefreshToken(userId: string, refreshToken: string): Promise<void> {
     // Calculate expiration date (7 days from now)
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 7); // 7 days
@@ -240,7 +243,7 @@ export class AuthService {
     });
   }
 
-  private async updateRefreshToken(tokenId: string, newRefreshToken: string) {
+  private async updateRefreshToken(tokenId: string, newRefreshToken: string): Promise<void> {
     // Calculate expiration date (7 days from now)
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 7); // 7 days
