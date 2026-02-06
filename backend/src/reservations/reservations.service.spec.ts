@@ -9,31 +9,38 @@ import { ReservationStatus } from '../common/enums/reservation-status.enum';
 import { EventStatus } from '../common/enums/event-status.enum';
 import { UserRole } from '../common/enums/user-role.enum';
 
+const mockReservationModel = {
+  create: jest.fn(),
+  findMany: jest.fn(),
+  findFirst: jest.fn(),
+  findUnique: jest.fn(),
+  update: jest.fn(),
+  updateMany: jest.fn(),
+  count: jest.fn(),
+};
+
+const mockEventModel = {
+  findUnique: jest.fn(),
+  update: jest.fn(),
+};
+
+const mockTransaction = jest.fn();
+
 describe('ReservationsService', () => {
   let service: ReservationsService;
-  let prisma: PrismaService;
 
   beforeEach(async () => {
+    jest.clearAllMocks();
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ReservationsService,
         {
           provide: PrismaService,
           useValue: {
-            reservation: {
-              create: jest.fn(),
-              findMany: jest.fn(),
-              findFirst: jest.fn(),
-              findUnique: jest.fn(),
-              update: jest.fn(),
-              updateMany: jest.fn(),
-              count: jest.fn(),
-            },
-            event: {
-              findUnique: jest.fn(),
-              update: jest.fn(),
-            },
-            $transaction: jest.fn(),
+            reservation: mockReservationModel,
+            event: mockEventModel,
+            $transaction: mockTransaction,
           },
         },
         {
@@ -56,7 +63,6 @@ describe('ReservationsService', () => {
     }).compile();
 
     service = module.get<ReservationsService>(ReservationsService);
-    prisma = module.get<PrismaService>(PrismaService);
   });
 
   it('should be defined', () => {
@@ -97,13 +103,17 @@ describe('ReservationsService', () => {
         canceledAt: null,
       };
 
-      jest.spyOn(prisma.event, 'findUnique').mockResolvedValue(event);
-      jest.spyOn(prisma.reservation, 'findFirst').mockResolvedValue(null);
-      jest.spyOn(prisma, '$transaction').mockImplementation(async (callback) => {
-        return await callback(prisma);
+      mockEventModel.findUnique.mockResolvedValue(event);
+      mockEventModel.update.mockResolvedValue({ ...event, availableSeats: 8 } as any);
+      mockReservationModel.findFirst.mockResolvedValue(null);
+      mockReservationModel.create.mockResolvedValue(reservation as any);
+      mockTransaction.mockImplementation(async (callback: any) => {
+        const prismaProxy = {
+          reservation: mockReservationModel,
+          event: mockEventModel,
+        };
+        return await callback(prismaProxy);
       });
-      jest.spyOn(prisma.reservation, 'create').mockResolvedValue(reservation as any);
-      jest.spyOn(prisma.event, 'update').mockResolvedValue({ ...event, availableSeats: 8 } as any);
 
       const result = await service.create(createReservationDto, userId);
       expect(result).toEqual(
@@ -129,8 +139,8 @@ describe('ReservationsService', () => {
         totalPages: 0,
       };
 
-      jest.spyOn(prisma.reservation, 'findMany').mockResolvedValue([]);
-      jest.spyOn(prisma.reservation, 'count').mockResolvedValue(0);
+      mockReservationModel.findMany.mockResolvedValue([]);
+      mockReservationModel.count.mockResolvedValue(0);
 
       const result = await service.findAll(filters, userId, userRole);
       expect(result).toEqual(expectedResult);

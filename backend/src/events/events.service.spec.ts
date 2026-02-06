@@ -7,25 +7,28 @@ import { FilterEventDto } from './dto/filter-event.dto';
 import { EventStatus } from '../common/enums/event-status.enum';
 import { UserRole } from '../common/enums/user-role.enum';
 
+const mockEventModel = {
+  create: jest.fn(),
+  findMany: jest.fn(),
+  findUnique: jest.fn(),
+  update: jest.fn(),
+  count: jest.fn(),
+  groupBy: jest.fn(),
+};
+
 describe('EventsService', () => {
   let service: EventsService;
-  let prisma: PrismaService;
 
   beforeEach(async () => {
+    jest.clearAllMocks();
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         EventsService,
         {
           provide: PrismaService,
           useValue: {
-            event: {
-              create: jest.fn(),
-              findMany: jest.fn(),
-              findUnique: jest.fn(),
-              update: jest.fn(),
-              count: jest.fn(),
-              groupBy: jest.fn(),
-            },
+            event: mockEventModel,
           },
         },
         {
@@ -42,7 +45,6 @@ describe('EventsService', () => {
     }).compile();
 
     service = module.get<EventsService>(EventsService);
-    prisma = module.get<PrismaService>(PrismaService);
   });
 
   it('should be defined', () => {
@@ -75,11 +77,11 @@ describe('EventsService', () => {
         updatedAt: new Date(),
       };
 
-      jest.spyOn(prisma.event, 'create').mockResolvedValue(expectedResult as any);
+      mockEventModel.create.mockResolvedValue(expectedResult as any);
 
       const result = await service.create(createEventDto, userId);
       expect(result).toEqual(expectedResult);
-      expect(prisma.event.create).toHaveBeenCalledWith({
+      expect(mockEventModel.create).toHaveBeenCalledWith({
         data: {
           title: 'Test Event',
           description: 'Test Description',
@@ -110,8 +112,8 @@ describe('EventsService', () => {
         totalPages: 0,
       };
 
-      jest.spyOn(prisma.event, 'findMany').mockResolvedValue([]);
-      jest.spyOn(prisma.event, 'count').mockResolvedValue(0);
+      mockEventModel.findMany.mockResolvedValue([]);
+      mockEventModel.count.mockResolvedValue(0);
 
       const result = await service.findAll(filters, userId, userRole);
       expect(result).toEqual(expectedResult);
