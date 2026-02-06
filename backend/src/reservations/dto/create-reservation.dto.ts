@@ -8,7 +8,7 @@ export class CreateReservationDto {
   })
   @IsString()
   @IsNotEmpty()
-  eventId: string;
+  eventId!: string;
 
   @ApiProperty({
     description: 'Number of seats to reserve',

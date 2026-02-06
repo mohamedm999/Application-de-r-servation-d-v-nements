@@ -121,10 +121,13 @@ export class ReservationsController {
   @ApiResponse({ status: 403, description: 'Forbidden' })
   @ApiResponse({ status: 404, description: 'Reservation not found' })
   async getTicketPdf(@Param('id') id: string, @CurrentUser() user: User, @Res() res: Response) {
-    const ticketData = await this.reservationsService.getTicketPdf(id, user.id);
+    const pdfBuffer = await this.reservationsService.getTicketPdf(id, user.id);
 
-    // In a real implementation, this would generate and return a PDF
-    // For now, we'll return the ticket data as JSON
-    res.json(ticketData);
+    res.set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `attachment; filename="ticket-${id}.pdf"`,
+      'Content-Length': pdfBuffer.length,
+    });
+    res.end(pdfBuffer);
   }
 }

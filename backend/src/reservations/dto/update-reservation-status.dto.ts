@@ -9,5 +9,5 @@ export class UpdateReservationStatusDto {
     example: ReservationStatus.CONFIRMED,
   })
   @IsEnum(ReservationStatus)
-  status: ReservationStatus;
+  status!: ReservationStatus;
 }

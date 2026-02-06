@@ -4,8 +4,12 @@ import {
   ForbiddenException,
   BadRequestException,
   InternalServerErrorException,
+  Logger,
 } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { MailService } from '../mail/mail.service';
+import { PdfService } from '../pdf/pdf.service';
 import { CreateReservationDto } from './dto/create-reservation.dto';
 import { FilterReservationDto } from './dto/filter-reservation.dto';
 import { ReservationStatus } from '../common/enums/reservation-status.enum';
@@ -14,7 +18,13 @@ import { UserRole } from '../common/enums/user-role.enum';
 
 @Injectable()
 export class ReservationsService {
-  constructor(private prisma: PrismaService) {}
+  private readonly logger = new Logger(ReservationsService.name);
+
+  constructor(
+    private prisma: PrismaService,
+    private mailService: MailService,
+    private pdfService: PdfService,
+  ) {}
 
   async create(createReservationDto: CreateReservationDto, userId: string) {
     const { eventId, numberOfSeats = 1 } = createReservationDto;
@@ -99,6 +109,19 @@ export class ReservationsService {
       return newReservation;
     });
 
+    // Send pending reservation email (non-blocking)
+    if (reservation.user && reservation.event) {
+      this.mailService
+        .sendReservationPending(
+          reservation.user.email,
+          reservation.user.firstName,
+          reservation.event.title,
+          reservation.event.date,
+          reservation.numberOfSeats,
+        )
+        .catch((err) => this.logger.warn(`Failed to send reservation pending email: ${err.message}`));
+    }
+
     return reservation;
   }
 
@@ -106,7 +129,7 @@ export class ReservationsService {
     const isAdmin = userRole === UserRole.ADMIN;
 
     // Build where clause based on user role
-    const whereClause: any = {};
+    const whereClause: Prisma.ReservationWhereInput = {};
 
     if (!isAdmin) {
       // Non-admins can only see their own reservations
@@ -268,6 +291,20 @@ export class ReservationsService {
       },
     });
 
+    // Send confirmation email (non-blocking)
+    if (updatedReservation.user && updatedReservation.event) {
+      this.mailService
+        .sendReservationConfirmed(
+          updatedReservation.user.email,
+          updatedReservation.user.firstName,
+          updatedReservation.event.title,
+          updatedReservation.event.date,
+          updatedReservation.event.location,
+          updatedReservation.numberOfSeats,
+        )
+        .catch((err) => this.logger.warn(`Failed to send reservation confirmed email: ${err.message}`));
+    }
+
     return updatedReservation;
   }
 
@@ -401,6 +438,18 @@ export class ReservationsService {
       return updatedReservation;
     });
 
+    // Send cancellation email (non-blocking)
+    if (cancelledReservation.user && cancelledReservation.event) {
+      this.mailService
+        .sendReservationCanceled(
+          cancelledReservation.user.email,
+          cancelledReservation.user.firstName,
+          cancelledReservation.event.title,
+          'Canceled by user',
+        )
+        .catch((err) => this.logger.warn(`Failed to send reservation canceled email: ${err.message}`));
+    }
+
     return cancelledReservation;
   }
 
@@ -462,7 +511,7 @@ export class ReservationsService {
     return cancelledReservation;
   }
 
-  async getTicketPdf(reservationId: string, userId: string) {
+  async getTicketPdf(reservationId: string, userId: string): Promise<Buffer> {
     // Find the reservation with related data
     const reservation = await this.prisma.reservation.findUnique({
       where: { id: reservationId },
@@ -501,16 +550,8 @@ export class ReservationsService {
       throw new ForbiddenException('Ticket can only be downloaded for confirmed reservations');
     }
 
-    // Note: The actual PDF generation would happen here using pdfkit or puppeteer
-    // For now, we'll return the reservation data that would be used for PDF generation
-    return {
-      reservationId: reservation.id,
-      status: reservation.status,
-      numberOfSeats: reservation.numberOfSeats,
-      createdAt: reservation.createdAt,
-      confirmedAt: reservation.confirmedAt,
-      event: reservation.event,
-      user: reservation.user,
-    };
+    // Generate actual PDF ticket
+    const pdfBuffer = await this.pdfService.generateTicket(reservation as any);
+    return pdfBuffer;
   }
 }
