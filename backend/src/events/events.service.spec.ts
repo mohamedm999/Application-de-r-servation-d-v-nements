@@ -3,7 +3,6 @@ import { EventsService } from './events.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { MailService } from '../mail/mail.service';
 import { CreateEventDto } from './dto/create-event.dto';
-import { UpdateEventDto } from './dto/update-event.dto';
 import { FilterEventDto } from './dto/filter-event.dto';
 import { EventStatus } from '../common/enums/event-status.enum';
 import { UserRole } from '../common/enums/user-role.enum';
@@ -89,12 +88,12 @@ describe('EventsService', () => {
           capacity: 50,
           availableSeats: 50,
           createdBy: {
-            connect: { id: userId }
-          }
+            connect: { id: userId },
+          },
         },
         include: {
-          createdBy: true
-        }
+          createdBy: true,
+        },
       });
     });
   });
@@ -108,7 +107,7 @@ describe('EventsService', () => {
         events: [],
         total: 0,
         page: 1,
-        totalPages: 0
+        totalPages: 0,
       };
 
       jest.spyOn(prisma.event, 'findMany').mockResolvedValue([]);

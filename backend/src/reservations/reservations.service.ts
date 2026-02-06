@@ -3,7 +3,6 @@ import {
   NotFoundException,
   ForbiddenException,
   BadRequestException,
-  InternalServerErrorException,
   Logger,
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
@@ -119,7 +118,9 @@ export class ReservationsService {
           reservation.event.date,
           reservation.numberOfSeats,
         )
-        .catch((err) => this.logger.warn(`Failed to send reservation pending email: ${err.message}`));
+        .catch((err) =>
+          this.logger.warn(`Failed to send reservation pending email: ${err.message}`),
+        );
     }
 
     return reservation;
@@ -249,7 +250,7 @@ export class ReservationsService {
     return reservation;
   }
 
-  async confirm(id: string, adminUserId: string) {
+  async confirm(id: string, _adminUserId: string) {
     // Find the reservation
     const reservation = await this.prisma.reservation.findUnique({
       where: { id },
@@ -302,13 +303,15 @@ export class ReservationsService {
           updatedReservation.event.location,
           updatedReservation.numberOfSeats,
         )
-        .catch((err) => this.logger.warn(`Failed to send reservation confirmed email: ${err.message}`));
+        .catch((err) =>
+          this.logger.warn(`Failed to send reservation confirmed email: ${err.message}`),
+        );
     }
 
     return updatedReservation;
   }
 
-  async refuse(id: string, adminUserId: string) {
+  async refuse(id: string, _adminUserId: string) {
     // Find the reservation
     const reservation = await this.prisma.reservation.findUnique({
       where: { id },
@@ -447,13 +450,15 @@ export class ReservationsService {
           cancelledReservation.event.title,
           'Canceled by user',
         )
-        .catch((err) => this.logger.warn(`Failed to send reservation canceled email: ${err.message}`));
+        .catch((err) =>
+          this.logger.warn(`Failed to send reservation canceled email: ${err.message}`),
+        );
     }
 
     return cancelledReservation;
   }
 
-  async cancelByAdmin(reservationId: string, adminUserId: string) {
+  async cancelByAdmin(reservationId: string, _adminUserId: string) {
     // Find the reservation
     const reservation = await this.prisma.reservation.findUnique({
       where: { id: reservationId },

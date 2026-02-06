@@ -19,7 +19,9 @@ export class AuthService {
     private configService: ConfigService,
   ) {}
 
-  private async generateTokens(user: Partial<User>): Promise<{ accessToken: string; refreshToken: string }> {
+  private async generateTokens(
+    user: Partial<User>,
+  ): Promise<{ accessToken: string; refreshToken: string }> {
     const accessTokenPayload = {
       sub: user.id as string,
       email: user.email as string,
@@ -35,9 +37,10 @@ export class AuthService {
     const accessToken = this.jwtService.sign(accessTokenPayload);
 
     // Generate refresh token using explicit options
-    const refreshSecret = this.configService.get<string>('JWT_REFRESH_SECRET') ?? 'your_refresh_secret';
+    const refreshSecret =
+      this.configService.get<string>('JWT_REFRESH_SECRET') ?? 'your_refresh_secret';
     const refreshExpiresIn = this.configService.get<string>('JWT_REFRESH_EXPIRES_IN') ?? '7d';
-    
+
     // Use type assertion for JWT options - this is a known NestJS typing issue
     const refreshToken = this.jwtService.sign(refreshTokenPayload, {
       secret: refreshSecret,
@@ -47,7 +50,9 @@ export class AuthService {
     return { accessToken, refreshToken };
   }
 
-  async register(registerDto: RegisterDto): Promise<{ user: Omit<User, 'password'>; accessToken: string; refreshToken: string }> {
+  async register(
+    registerDto: RegisterDto,
+  ): Promise<{ user: Omit<User, 'password'>; accessToken: string; refreshToken: string }> {
     const { email, password, firstName, lastName } = registerDto;
 
     // Check if user already exists
@@ -99,7 +104,9 @@ export class AuthService {
     }
   }
 
-  async login(loginDto: LoginDto): Promise<{ user: Omit<User, 'password'>; accessToken: string; refreshToken: string }> {
+  async login(
+    loginDto: LoginDto,
+  ): Promise<{ user: Omit<User, 'password'>; accessToken: string; refreshToken: string }> {
     const { email, password } = loginDto;
 
     // Find user
@@ -119,7 +126,7 @@ export class AuthService {
     }
 
     // Remove password from response
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+
     const { password: _password, ...userWithoutPassword } = user;
 
     // Generate tokens
@@ -156,7 +163,9 @@ export class AuthService {
     return user;
   }
 
-  async refreshTokens(refreshToken: string): Promise<{ accessToken: string; refreshToken: string }> {
+  async refreshTokens(
+    refreshToken: string,
+  ): Promise<{ accessToken: string; refreshToken: string }> {
     try {
       // Verify the refresh token
       const payload = await this.jwtService.verifyAsync(refreshToken, {

@@ -11,7 +11,7 @@ jest.mock('nodemailer', () => ({
 
 describe('MailService', () => {
   let service: MailService;
-  let configService: ConfigService;
+  let _configService: ConfigService;
 
   const mockConfigService = {
     get: jest.fn((key: string, defaultValue?: any) => {
@@ -39,7 +39,7 @@ describe('MailService', () => {
     }).compile();
 
     service = module.get<MailService>(MailService);
-    configService = module.get<ConfigService>(ConfigService);
+    _configService = module.get<ConfigService>(ConfigService);
   });
 
   afterEach(() => {
@@ -106,11 +106,7 @@ describe('MailService', () => {
 
   describe('sendReservationCanceled', () => {
     it('should send reservation canceled email without reason', async () => {
-      await service.sendReservationCanceled(
-        'user@example.com',
-        'John Doe',
-        'Tech Conference',
-      );
+      await service.sendReservationCanceled('user@example.com', 'John Doe', 'Tech Conference');
 
       expect(true).toBe(true);
     });

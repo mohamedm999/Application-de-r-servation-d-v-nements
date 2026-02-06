@@ -27,7 +27,9 @@ export const validationSchema = Joi.object({
   PDF_LOGO_PATH: Joi.string().optional(),
 
   // CORS
-  CORS_ORIGIN: Joi.string().default('http://localhost:3001,http://localhost:3003,http://localhost:5173'),
+  CORS_ORIGIN: Joi.string().default(
+    'http://localhost:3001,http://localhost:3003,http://localhost:5173',
+  ),
 
   // Rate Limiting
   THROTTLE_TTL: Joi.number().default(60),

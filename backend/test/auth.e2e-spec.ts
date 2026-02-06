@@ -68,15 +68,9 @@ describe('Auth Endpoints (e2e)', () => {
         lastName: 'Doe',
       };
 
-      await request(app.getHttpServer())
-        .post('/api/auth/register')
-        .send(registerDto)
-        .expect(201);
+      await request(app.getHttpServer()).post('/api/auth/register').send(registerDto).expect(201);
 
-      await request(app.getHttpServer())
-        .post('/api/auth/register')
-        .send(registerDto)
-        .expect(409);
+      await request(app.getHttpServer()).post('/api/auth/register').send(registerDto).expect(409);
     });
 
     it('should fail with invalid email format', async () => {

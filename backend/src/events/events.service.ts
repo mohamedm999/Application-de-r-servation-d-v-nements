@@ -323,7 +323,9 @@ export class EventsService {
           event.title,
           event.date,
         )
-        .catch((err) => this.logger.warn(`Failed to send event cancellation email: ${err.message}`));
+        .catch((err) =>
+          this.logger.warn(`Failed to send event cancellation email: ${err.message}`),
+        );
     }
 
     return canceledEvent;
@@ -384,10 +386,13 @@ export class EventsService {
       },
     });
 
-    const statusDist: Record<string, number> = statusDistribution.reduce((acc, curr) => {
-      acc[curr.status] = curr._count.status;
-      return acc;
-    }, {} as Record<string, number>);
+    const statusDist: Record<string, number> = statusDistribution.reduce(
+      (acc, curr) => {
+        acc[curr.status] = curr._count.status;
+        return acc;
+      },
+      {} as Record<string, number>,
+    );
 
     return {
       upcomingEvents: upcomingEventsCount,

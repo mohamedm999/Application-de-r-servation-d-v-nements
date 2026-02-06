@@ -27,6 +27,7 @@
     "rest"
   ],
   "devDependencies": {
+    "@eslint/js": "^9.39.2",
     "@nestjs/cli": "^11.0.16",
     "@nestjs/testing": "^11.1.12",
     "@types/bcrypt": "^6.0.0",
@@ -51,7 +52,8 @@
     "ts-loader": "^9.5.4",
     "ts-node": "^10.9.2",
     "tsconfig-paths": "^4.2.0",
-    "typescript": "5.6.3"
+    "typescript": "5.6.3",
+    "typescript-eslint": "^8.54.0"
   },
   "dependencies": {
     "@nestjs/common": "^11.1.12",

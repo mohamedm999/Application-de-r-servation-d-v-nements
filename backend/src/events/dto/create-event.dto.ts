@@ -6,12 +6,9 @@ import {
   IsNumber,
   Min,
   Max,
-  IsEnum,
-  IsOptional,
   MinLength,
   MaxLength,
 } from 'class-validator';
-import { EventStatus } from '../../common/enums/event-status.enum';
 
 export class CreateEventDto {
   @ApiProperty({

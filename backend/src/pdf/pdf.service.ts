@@ -9,7 +9,12 @@ export class PdfService {
   constructor(private configService: ConfigService) {}
 
   async generateTicket(reservation: ReservationWithRelations): Promise<Buffer> {
-    return new Promise(async (resolve, reject) => {
+    // Generate QR code before creating the PDF stream
+    const qrData = `RESERVATION:${reservation.id}:${reservation.event.id}`;
+    const qrCodeDataUrl = await QRCode.toDataURL(qrData);
+    const qrCodeBuffer = Buffer.from(qrCodeDataUrl.split(',')[1], 'base64');
+
+    return new Promise((resolve, reject) => {
       try {
         const doc = new PDFDocument({ size: 'A4', margin: 50 });
         const chunks: Buffer[] = [];
@@ -17,11 +22,6 @@ export class PdfService {
         doc.on('data', (chunk) => chunks.push(chunk));
         doc.on('end', () => resolve(Buffer.concat(chunks)));
         doc.on('error', reject);
-
-        // Generate QR code for verification
-        const qrData = `RESERVATION:${reservation.id}:${reservation.event.id}`;
-        const qrCodeDataUrl = await QRCode.toDataURL(qrData);
-        const qrCodeBuffer = Buffer.from(qrCodeDataUrl.split(',')[1], 'base64');
 
         // Header
         doc
@@ -51,16 +51,22 @@ export class PdfService {
           .fontSize(12)
           .font('Helvetica')
           .fillColor('#666')
-          .text(`${new Date(reservation.event.date).toLocaleDateString('en-US', {
-            weekday: 'long',
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric',
-          })}`, { align: 'center' })
-          .text(`${new Date(reservation.event.date).toLocaleTimeString('en-US', {
-            hour: '2-digit',
-            minute: '2-digit',
-          })}`, { align: 'center' })
+          .text(
+            `${new Date(reservation.event.date).toLocaleDateString('en-US', {
+              weekday: 'long',
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric',
+            })}`,
+            { align: 'center' },
+          )
+          .text(
+            `${new Date(reservation.event.date).toLocaleTimeString('en-US', {
+              hour: '2-digit',
+              minute: '2-digit',
+            })}`,
+            { align: 'center' },
+          )
           .moveDown(0.3)
           .text(reservation.event.location, { align: 'center' })
           .moveDown(2);
@@ -112,11 +118,7 @@ export class PdfService {
           .text('Booking Date:', leftColumn, currentY)
           .font('Helvetica-Bold')
           .fillColor('#000')
-          .text(
-            new Date(reservation.createdAt).toLocaleDateString(),
-            leftColumn + 100,
-            currentY
-          );
+          .text(new Date(reservation.createdAt).toLocaleDateString(), leftColumn + 100, currentY);
 
         // Right Column - Attendee Info
         currentY = doc.y - 56;
@@ -137,7 +139,7 @@ export class PdfService {
           .text(
             `${reservation.user.firstName} ${reservation.user.lastName}`,
             rightColumn + 50,
-            currentY
+            currentY,
           );
 
         currentY += 18;
@@ -178,10 +180,9 @@ export class PdfService {
           .text('This is your official event ticket. Please present it at the venue.', {
             align: 'center',
           })
-          .text(
-            'For questions, contact the event organizer or visit our support page.',
-            { align: 'center' }
-          );
+          .text('For questions, contact the event organizer or visit our support page.', {
+            align: 'center',
+          });
 
         doc.end();
       } catch (error) {

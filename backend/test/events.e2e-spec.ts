@@ -11,7 +11,7 @@ describe('Events Endpoints (e2e)', () => {
   let adminToken: string;
   let adminId: string;
   let participantToken: string;
-  let participantId: string;
+  let _participantId: string;
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -34,7 +34,7 @@ describe('Events Endpoints (e2e)', () => {
 
     // Create test users
     const hashedPassword = await bcrypt.hash('Password123!', 10);
-    
+
     const admin = await prisma.user.create({
       data: {
         email: 'admin@test.com',
@@ -55,7 +55,7 @@ describe('Events Endpoints (e2e)', () => {
         role: 'PARTICIPANT',
       },
     });
-    participantId = participant.id;
+    _participantId = participant.id;
 
     // Login to get tokens
     const adminLogin = await request(app.getHttpServer())
@@ -128,10 +128,7 @@ describe('Events Endpoints (e2e)', () => {
         capacity: 50,
       };
 
-      await request(app.getHttpServer())
-        .post('/api/events')
-        .send(eventData)
-        .expect(401);
+      await request(app.getHttpServer()).post('/api/events').send(eventData).expect(401);
     });
 
     it('should fail with invalid data (400)', async () => {
@@ -194,9 +191,7 @@ describe('Events Endpoints (e2e)', () => {
     });
 
     it('should work without authentication', async () => {
-      const response = await request(app.getHttpServer())
-        .get('/api/events')
-        .expect(200);
+      const response = await request(app.getHttpServer()).get('/api/events').expect(200);
 
       expect(response.body).toHaveProperty('events');
       expect(Array.isArray(response.body.events)).toBe(true);
@@ -223,9 +218,7 @@ describe('Events Endpoints (e2e)', () => {
     });
 
     it('should get event by ID', async () => {
-      const response = await request(app.getHttpServer())
-        .get(`/api/events/${eventId}`)
-        .expect(200);
+      const response = await request(app.getHttpServer()).get(`/api/events/${eventId}`).expect(200);
 
       expect(response.body.id).toBe(eventId);
       expect(response.body.title).toBe('Test Event');

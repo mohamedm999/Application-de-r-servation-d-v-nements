@@ -5,7 +5,7 @@ import { ReservationStatus } from '../common/enums/reservation-status.enum';
 
 describe('PdfService', () => {
   let service: PdfService;
-  let configService: ConfigService;
+  let _configService: ConfigService;
 
   const mockConfigService = {
     get: jest.fn((key: string, defaultValue?: any) => {
@@ -28,7 +28,7 @@ describe('PdfService', () => {
     }).compile();
 
     service = module.get<PdfService>(PdfService);
-    configService = module.get<ConfigService>(ConfigService);
+    _configService = module.get<ConfigService>(ConfigService);
   });
 
   afterEach(() => {
@@ -63,7 +63,7 @@ describe('PdfService', () => {
 
       expect(pdfBuffer).toBeInstanceOf(Buffer);
       expect(pdfBuffer.length).toBeGreaterThan(0);
-      
+
       // Check that PDF starts with PDF magic number
       expect(pdfBuffer.toString('utf8', 0, 4)).toBe('%PDF');
     });

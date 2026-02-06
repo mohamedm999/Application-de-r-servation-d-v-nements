@@ -36,7 +36,7 @@ describe('Reservations Endpoints (e2e)', () => {
 
     // Create test users
     const hashedPassword = await bcrypt.hash('Password123!', 10);
-    
+
     const admin = await prisma.user.create({
       data: {
         email: 'admin@test.com',
@@ -338,7 +338,7 @@ describe('Reservations Endpoints (e2e)', () => {
       expect(response.body.id).toBe(reservationId);
     });
 
-    it('PARTICIPANT: should fail to get another user\'s reservation (403)', async () => {
+    it("PARTICIPANT: should fail to get another user's reservation (403)", async () => {
       await request(app.getHttpServer())
         .get(`/api/reservations/${reservationId}`)
         .set('Authorization', `Bearer ${participant2Token}`)
@@ -493,7 +493,7 @@ describe('Reservations Endpoints (e2e)', () => {
       expect(response.body.status).toBe('CANCELED');
     });
 
-    it('PARTICIPANT: should fail to cancel another user\'s reservation (403)', async () => {
+    it("PARTICIPANT: should fail to cancel another user's reservation (403)", async () => {
       await request(app.getHttpServer())
         .delete(`/api/reservations/${reservationId}`)
         .set('Authorization', `Bearer ${participant2Token}`)

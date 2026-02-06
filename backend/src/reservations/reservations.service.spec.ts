@@ -70,7 +70,7 @@ describe('ReservationsService', () => {
         numberOfSeats: 2,
       };
       const userId = 'test-user-id';
-      
+
       const event = {
         id: 'test-event-id',
         title: 'Test Event',
@@ -84,7 +84,7 @@ describe('ReservationsService', () => {
         createdAt: new Date(),
         updatedAt: new Date(),
       };
-      
+
       const reservation = {
         id: 'test-reservation-id',
         eventId: 'test-event-id',
@@ -106,12 +106,14 @@ describe('ReservationsService', () => {
       jest.spyOn(prisma.event, 'update').mockResolvedValue({ ...event, availableSeats: 8 } as any);
 
       const result = await service.create(createReservationDto, userId);
-      expect(result).toEqual(expect.objectContaining({
-        id: 'test-reservation-id',
-        eventId: 'test-event-id',
-        userId: 'test-user-id',
-        status: ReservationStatus.PENDING,
-      }));
+      expect(result).toEqual(
+        expect.objectContaining({
+          id: 'test-reservation-id',
+          eventId: 'test-event-id',
+          userId: 'test-user-id',
+          status: ReservationStatus.PENDING,
+        }),
+      );
     });
   });
 
@@ -124,7 +126,7 @@ describe('ReservationsService', () => {
         reservations: [],
         total: 0,
         page: 1,
-        totalPages: 0
+        totalPages: 0,
       };
 
       jest.spyOn(prisma.reservation, 'findMany').mockResolvedValue([]);

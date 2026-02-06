@@ -8,12 +8,10 @@ import {
   Delete,
   Query,
   UseGuards,
-  HttpStatus,
   Res,
 } from '@nestjs/common';
 import { ReservationsService } from './reservations.service';
 import { CreateReservationDto } from './dto/create-reservation.dto';
-import { UpdateReservationStatusDto } from './dto/update-reservation-status.dto';
 import { FilterReservationDto } from './dto/filter-reservation.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
