@@ -8,6 +8,7 @@ import { UsersModule } from './users/users.module';
 import { EventsModule } from './events/events.module';
 import { ReservationsModule } from './reservations/reservations.module';
 import { PdfModule } from './pdf/pdf.module';
+import { MailModule } from './mail/mail.module';
 import { validationSchema } from './config/validation.schema';
 
 @Module({
@@ -26,6 +27,7 @@ import { validationSchema } from './config/validation.schema';
     EventsModule,
     ReservationsModule,
     PdfModule,
+    MailModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -1,0 +1,101 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider   = "prisma-client-js"
+  engineType = "library"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserRole {
+  ADMIN
+  PARTICIPANT
+}
+
+enum EventStatus {
+  DRAFT
+  PUBLISHED
+  CANCELED
+}
+
+enum ReservationStatus {
+  PENDING
+  CONFIRMED
+  REFUSED
+  CANCELED
+}
+
+model User {
+  id            String        @id @default(uuid())
+  email         String        @unique
+  password      String
+  firstName     String
+  lastName      String
+  role          UserRole      @default(PARTICIPANT)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  
+  // Relations
+  createdEvents Event[]       @relation("CreatedEvents")
+  reservations  Reservation[]
+  refreshTokens RefreshToken[]
+
+  @@map("users")
+}
+
+model Event {
+  id             String        @id @default(uuid())
+  title          String
+  description    String
+  date           DateTime
+  location       String
+  capacity       Int
+  availableSeats Int
+  status         EventStatus   @default(DRAFT)
+  createdById    String
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  
+  // Relations
+  createdBy      User          @relation("CreatedEvents", fields: [createdById], references: [id])
+  reservations   Reservation[]
+
+  @@map("events")
+}
+
+model Reservation {
+  id            String            @id @default(uuid())
+  eventId       String
+  userId        String
+  status        ReservationStatus @default(PENDING)
+  numberOfSeats Int               @default(1)
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+  confirmedAt   DateTime?
+  canceledAt    DateTime?
+  
+  // Relations
+  event         Event             @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user          User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, eventId, status], name: "unique_active_reservation")
+  @@map("reservations")
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  revoked   Boolean  @default(false)
+  
+  // Relations
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("refresh_tokens")
+}
+
