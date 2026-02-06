@@ -1,0 +1,68 @@
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: event-booking-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: your_secure_password
+      POSTGRES_DB: event_booking
+    ports:
+      - "5439:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - app-network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: event-booking-backend
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - API_PREFIX=api
+      - DATABASE_URL=postgresql://postgres:your_secure_password@postgres:5432/event_booking
+      - JWT_ACCESS_SECRET=your-super-secret-access-token-key-change-in-production-with-minimum-32-characters
+      - JWT_REFRESH_SECRET=your-super-secret-refresh-token-key-change-in-production-with-minimum-32-characters
+      - JWT_ACCESS_EXPIRES_IN=15m
+      - JWT_REFRESH_EXPIRES_IN=7d
+      - CORS_ORIGIN=http://localhost:3003
+      - THROTTLE_TTL=60
+      - THROTTLE_LIMIT=10
+      - DEFAULT_PAGE_SIZE=10
+      - MAX_PAGE_SIZE=100
+      - PDF_LOGO_PATH=./assets/logo.png
+    ports:
+      - "3002:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - app-network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: event-booking-frontend
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:3002/api
+    ports:
+      - "3003:3001"
+    depends_on:
+      - backend
+    networks:
+      - app-network
+
+volumes:
+  postgres_data:
+
+networks:
+  app-network:
+    driver: bridge
