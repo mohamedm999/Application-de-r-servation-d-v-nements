@@ -3,14 +3,15 @@ import { INestApplication, ValidationPipe } from '@nestjs/common';
 import request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { PrismaService } from '../src/prisma/prisma.service';
-import { JwtService } from '@nestjs/jwt';
+import * as bcrypt from 'bcrypt';
 
-describe('EventsController (e2e)', () => {
+describe('Events Endpoints (e2e)', () => {
   let app: INestApplication;
   let prisma: PrismaService;
-  let jwtService: JwtService;
   let adminToken: string;
+  let adminId: string;
   let participantToken: string;
+  let participantId: string;
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -19,7 +20,6 @@ describe('EventsController (e2e)', () => {
 
     app = moduleFixture.createNestApplication();
     prisma = moduleFixture.get(PrismaService);
-    jwtService = moduleFixture.get(JwtService);
 
     app.setGlobalPrefix('api');
     app.useGlobalPipes(
@@ -32,87 +32,356 @@ describe('EventsController (e2e)', () => {
 
     await app.init();
 
-    // Create test users and get tokens
-    const adminUser = await prisma.user.create({
+    // Create test users
+    const hashedPassword = await bcrypt.hash('Password123!', 10);
+    
+    const admin = await prisma.user.create({
       data: {
         email: 'admin@test.com',
-        password: 'hashedpassword',
+        password: hashedPassword,
         firstName: 'Admin',
         lastName: 'User',
         role: 'ADMIN',
       },
     });
+    adminId = admin.id;
 
-    const participantUser = await prisma.user.create({
+    const participant = await prisma.user.create({
       data: {
         email: 'participant@test.com',
-        password: 'hashedpassword',
+        password: hashedPassword,
         firstName: 'Participant',
         lastName: 'User',
         role: 'PARTICIPANT',
       },
     });
+    participantId = participant.id;
 
-    adminToken = jwtService.sign({
-      sub: adminUser.id,
-      email: adminUser.email,
-      role: adminUser.role,
-    });
+    // Login to get tokens
+    const adminLogin = await request(app.getHttpServer())
+      .post('/api/auth/login')
+      .send({ email: 'admin@test.com', password: 'Password123!' });
+    adminToken = adminLogin.body.accessToken;
 
-    participantToken = jwtService.sign({
-      sub: participantUser.id,
-      email: participantUser.email,
-      role: participantUser.role,
-    });
+    const participantLogin = await request(app.getHttpServer())
+      .post('/api/auth/login')
+      .send({ email: 'participant@test.com', password: 'Password123!' });
+    participantToken = participantLogin.body.accessToken;
   });
 
   afterAll(async () => {
-    // Clean up test data
-    await prisma.user.deleteMany({
-      where: {
-        email: { in: ['admin@test.com', 'participant@test.com'] },
-      },
-    });
+    await prisma.reservation.deleteMany({});
+    await prisma.event.deleteMany({});
+    await prisma.refreshToken.deleteMany({});
+    await prisma.user.deleteMany({});
     await app.close();
   });
 
-  describe('POST /api/events (Admin only)', () => {
-    it('should create an event when authenticated as admin', async () => {
+  afterEach(async () => {
+    await prisma.reservation.deleteMany({});
+    await prisma.event.deleteMany({});
+  });
+
+  describe('POST /api/events', () => {
+    it('ADMIN: should create an event', async () => {
       const eventData = {
-        title: 'Test Event',
-        description: 'This is a test event description',
-        date: new Date(Date.now() + 86400000).toISOString(), // Tomorrow
-        location: 'Test Location',
+        title: 'Admin Event',
+        description: 'Event created by admin',
+        date: new Date(Date.now() + 86400000).toISOString(),
+        location: 'Admin Location',
         capacity: 50,
       };
 
-      return request(app.getHttpServer())
+      const response = await request(app.getHttpServer())
         .post('/api/events')
         .set('Authorization', `Bearer ${adminToken}`)
         .send(eventData)
         .expect(201);
+
+      expect(response.body.title).toBe(eventData.title);
+      expect(response.body.status).toBe('DRAFT');
+      expect(response.body.availableSeats).toBe(50);
     });
 
-    it('should not create an event when authenticated as participant', async () => {
+    it('PARTICIPANT: should fail to create an event (403)', async () => {
       const eventData = {
-        title: 'Test Event 2',
-        description: 'This is another test event description',
-        date: new Date(Date.now() + 86400000).toISOString(), // Tomorrow
-        location: 'Test Location 2',
-        capacity: 30,
+        title: 'Participant Event',
+        description: 'Event by participant',
+        date: new Date(Date.now() + 86400000).toISOString(),
+        location: 'Location',
+        capacity: 50,
       };
 
-      return request(app.getHttpServer())
+      await request(app.getHttpServer())
         .post('/api/events')
         .set('Authorization', `Bearer ${participantToken}`)
         .send(eventData)
-        .expect(403); // Forbidden
+        .expect(403);
+    });
+
+    it('should fail without authentication (401)', async () => {
+      const eventData = {
+        title: 'No Auth Event',
+        description: 'Event without auth',
+        date: new Date(Date.now() + 86400000).toISOString(),
+        location: 'Location',
+        capacity: 50,
+      };
+
+      await request(app.getHttpServer())
+        .post('/api/events')
+        .send(eventData)
+        .expect(401);
+    });
+
+    it('should fail with invalid data (400)', async () => {
+      await request(app.getHttpServer())
+        .post('/api/events')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          title: '',
+          capacity: -5,
+        })
+        .expect(400);
     });
   });
 
-  describe('GET /api/events (Public)', () => {
-    it('should return published events', async () => {
-      return request(app.getHttpServer()).get('/api/events').expect(200);
+  describe('GET /api/events', () => {
+    beforeEach(async () => {
+      await prisma.event.createMany({
+        data: [
+          {
+            title: 'Published Event',
+            description: 'Description',
+            date: new Date(Date.now() + 86400000),
+            location: 'Location',
+            capacity: 50,
+            availableSeats: 50,
+            status: 'PUBLISHED',
+            createdById: adminId,
+          },
+          {
+            title: 'Draft Event',
+            description: 'Description',
+            date: new Date(Date.now() + 86400000),
+            location: 'Location',
+            capacity: 30,
+            availableSeats: 30,
+            status: 'DRAFT',
+            createdById: adminId,
+          },
+        ],
+      });
+    });
+
+    it('ADMIN: should see all events including drafts', async () => {
+      const response = await request(app.getHttpServer())
+        .get('/api/events')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .expect(200);
+
+      expect(response.body.events.length).toBeGreaterThanOrEqual(2);
+    });
+
+    it('PARTICIPANT: should only see published events', async () => {
+      const response = await request(app.getHttpServer())
+        .get('/api/events')
+        .set('Authorization', `Bearer ${participantToken}`)
+        .expect(200);
+
+      expect(response.body.events.length).toBeGreaterThanOrEqual(1);
+      expect(response.body.events.every((e: any) => e.status === 'PUBLISHED')).toBe(true);
+    });
+
+    it('should work without authentication', async () => {
+      const response = await request(app.getHttpServer())
+        .get('/api/events')
+        .expect(200);
+
+      expect(response.body).toHaveProperty('events');
+      expect(Array.isArray(response.body.events)).toBe(true);
+    });
+  });
+
+  describe('GET /api/events/:id', () => {
+    let eventId: string;
+
+    beforeEach(async () => {
+      const event = await prisma.event.create({
+        data: {
+          title: 'Test Event',
+          description: 'Description',
+          date: new Date(Date.now() + 86400000),
+          location: 'Location',
+          capacity: 50,
+          availableSeats: 50,
+          status: 'PUBLISHED',
+          createdById: adminId,
+        },
+      });
+      eventId = event.id;
+    });
+
+    it('should get event by ID', async () => {
+      const response = await request(app.getHttpServer())
+        .get(`/api/events/${eventId}`)
+        .expect(200);
+
+      expect(response.body.id).toBe(eventId);
+      expect(response.body.title).toBe('Test Event');
+    });
+
+    it('should fail with invalid ID (404)', async () => {
+      await request(app.getHttpServer())
+        .get('/api/events/00000000-0000-0000-0000-000000000000')
+        .expect(404);
+    });
+  });
+
+  describe('PATCH /api/events/:id', () => {
+    let eventId: string;
+
+    beforeEach(async () => {
+      const event = await prisma.event.create({
+        data: {
+          title: 'Original Title',
+          description: 'Description',
+          date: new Date(Date.now() + 86400000),
+          location: 'Location',
+          capacity: 50,
+          availableSeats: 50,
+          status: 'DRAFT',
+          createdById: adminId,
+        },
+      });
+      eventId = event.id;
+    });
+
+    it('ADMIN: should update event', async () => {
+      const response = await request(app.getHttpServer())
+        .patch(`/api/events/${eventId}`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ title: 'Updated Title' })
+        .expect(200);
+
+      expect(response.body.title).toBe('Updated Title');
+    });
+
+    it('PARTICIPANT: should fail to update event (403)', async () => {
+      await request(app.getHttpServer())
+        .patch(`/api/events/${eventId}`)
+        .set('Authorization', `Bearer ${participantToken}`)
+        .send({ title: 'Unauthorized Update' })
+        .expect(403);
+    });
+  });
+
+  describe('PATCH /api/events/:id/publish', () => {
+    let eventId: string;
+
+    beforeEach(async () => {
+      const event = await prisma.event.create({
+        data: {
+          title: 'Draft Event',
+          description: 'Description',
+          date: new Date(Date.now() + 86400000),
+          location: 'Location',
+          capacity: 50,
+          availableSeats: 50,
+          status: 'DRAFT',
+          createdById: adminId,
+        },
+      });
+      eventId = event.id;
+    });
+
+    it('ADMIN: should publish event', async () => {
+      const response = await request(app.getHttpServer())
+        .patch(`/api/events/${eventId}/publish`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .expect(200);
+
+      expect(response.body.status).toBe('PUBLISHED');
+    });
+
+    it('PARTICIPANT: should fail to publish (403)', async () => {
+      await request(app.getHttpServer())
+        .patch(`/api/events/${eventId}/publish`)
+        .set('Authorization', `Bearer ${participantToken}`)
+        .expect(403);
+    });
+  });
+
+  describe('PATCH /api/events/:id/cancel', () => {
+    let eventId: string;
+
+    beforeEach(async () => {
+      const event = await prisma.event.create({
+        data: {
+          title: 'Published Event',
+          description: 'Description',
+          date: new Date(Date.now() + 86400000),
+          location: 'Location',
+          capacity: 50,
+          availableSeats: 50,
+          status: 'PUBLISHED',
+          createdById: adminId,
+        },
+      });
+      eventId = event.id;
+    });
+
+    it('ADMIN: should cancel event', async () => {
+      const response = await request(app.getHttpServer())
+        .patch(`/api/events/${eventId}/cancel`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .expect(200);
+
+      expect(response.body.status).toBe('CANCELED');
+    });
+
+    it('PARTICIPANT: should fail to cancel (403)', async () => {
+      await request(app.getHttpServer())
+        .patch(`/api/events/${eventId}/cancel`)
+        .set('Authorization', `Bearer ${participantToken}`)
+        .expect(403);
+    });
+  });
+
+  describe('DELETE /api/events/:id', () => {
+    let eventId: string;
+
+    beforeEach(async () => {
+      const event = await prisma.event.create({
+        data: {
+          title: 'Event to Delete',
+          description: 'Description',
+          date: new Date(Date.now() + 86400000),
+          location: 'Location',
+          capacity: 50,
+          availableSeats: 50,
+          status: 'DRAFT',
+          createdById: adminId,
+        },
+      });
+      eventId = event.id;
+    });
+
+    it('ADMIN: should delete event', async () => {
+      await request(app.getHttpServer())
+        .delete(`/api/events/${eventId}`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .expect(200);
+
+      const deleted = await prisma.event.findUnique({ where: { id: eventId } });
+      expect(deleted).toBeNull();
+    });
+
+    it('PARTICIPANT: should fail to delete (403)', async () => {
+      await request(app.getHttpServer())
+        .delete(`/api/events/${eventId}`)
+        .set('Authorization', `Bearer ${participantToken}`)
+        .expect(403);
     });
   });
 });
