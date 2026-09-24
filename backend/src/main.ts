@@ -11,7 +11,7 @@ import { SystemLoggerService } from './common/logger/system-logger.service';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
-    logger: new SystemLoggerService(), // Use custom system logger
+    logger: new SystemLoggerService(),
   });
 
   // Security

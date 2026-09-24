@@ -74,16 +74,16 @@ export default function AdminReservationsPage() {
 
       {loading ? (
         <div className="flex justify-center py-20">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent" />
+          <div className="w-8 h-8 border-4 border-blue-600 rounded-full animate-spin border-t-transparent" />
         </div>
       ) : reservations.length === 0 ? (
-        <div className="card py-12 text-center">
+        <div className="py-12 text-center card">
           <p className="text-gray-500">Aucune réservation.</p>
         </div>
       ) : (
         <>
-          <div className="overflow-x-auto rounded-lg border">
-            <table className="w-full text-left text-sm">
+          <div className="overflow-x-auto border rounded-lg">
+            <table className="w-full text-sm text-left">
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-4 py-3 font-medium text-gray-700">Participant</th>
@@ -123,14 +123,14 @@ export default function AdminReservationsPage() {
                               className="rounded p-1.5 text-green-500 hover:bg-green-50 hover:text-green-700"
                               title="Confirmer"
                             >
-                              <CheckCircle className="h-4 w-4" />
+                              <CheckCircle className="w-4 h-4" />
                             </button>
                             <button
                               onClick={() => handleRefuse(r.id)}
                               className="rounded p-1.5 text-red-500 hover:bg-red-50 hover:text-red-700"
                               title="Refuser"
                             >
-                              <XCircle className="h-4 w-4" />
+                              <XCircle className="w-4 h-4" />
                             </button>
                           </>
                         )}
@@ -140,7 +140,7 @@ export default function AdminReservationsPage() {
                             className="rounded p-1.5 text-orange-500 hover:bg-orange-50 hover:text-orange-700"
                             title="Annuler"
                           >
-                            <Ban className="h-4 w-4" />
+                            <Ban className="w-4 h-4" />
                           </button>
                         )}
                       </div>
@@ -153,11 +153,11 @@ export default function AdminReservationsPage() {
 
           {/* Pagination */}
           {totalPages > 1 && (
-            <div className="mt-6 flex items-center justify-center gap-2">
+            <div className="flex items-center justify-center gap-2 mt-6">
               <button
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
                 disabled={page <= 1}
-                className="rounded-lg border px-4 py-2 text-sm font-medium disabled:opacity-50"
+                className="px-4 py-2 text-sm font-medium border rounded-lg disabled:opacity-50"
               >
                 Précédent
               </button>
@@ -167,7 +167,7 @@ export default function AdminReservationsPage() {
               <button
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                 disabled={page >= totalPages}
-                className="rounded-lg border px-4 py-2 text-sm font-medium disabled:opacity-50"
+                className="px-4 py-2 text-sm font-medium border rounded-lg disabled:opacity-50"
               >
                 Suivant
               </button>
